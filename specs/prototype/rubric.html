@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rubric · DemoDay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Atkinson+Hyperlegible+Next:wght@400;600&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,90,600&display=swap">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+<main id="main" tabindex="-1">
+  <div class="page" style="max-width:960px">
+    <section class="hero hero-compact" aria-labelledby="rubric-title">
+      <div class="hero-photo" style="background-image:url('assets/img/teams-building.jpg')" role="img" aria-label="Hackathon participants working on laptops around a table"></div>
+      <div class="hero-body">
+        <h1 class="hero-title" id="rubric-title">Rubric</h1>
+        <p class="hero-sub">The criteria the AI applies to every team video. Read when each evaluation starts.</p>
+      </div>
+    </section>
+    <div id="content"></div>
+  </div>
+</main>
+
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(function () {
+  "use strict";
+  DD.mountShell("rubric");
+  DD.mountCredits(["teams"]);
+  const root = DD.$("#content");
+
+  async function render() {
+    const r = await DD.loadRubric();
+    const status = r.error
+      ? `<div class="banner banner-failed" role="alert"><span class="state state-failed">${DD.icon("failed")}</span>
+          <div><p class="banner-title">Rubric configuration invalid</p>
+          <p class="banner-body">${DD.esc(r.error)}. Evaluations fail until rubric.md is fixed.</p></div></div>`
+      : `<div class="banner banner-info"><div><p class="banner-title">Default rubric in use</p>
+          <p class="banner-body">No rubric.md was found in the data folder, so the version-controlled default rubric applies.</p></div></div>`;
+
+    const cats = r.meta
+      ? `<section class="panel"><h2 class="panel-title">Categories</h2>
+          <div class="table-wrap"><table>
+            <caption class="sr-only">Rubric categories, weights and scoring tiers</caption>
+            <thead><tr><th scope="col">Category</th><th scope="col" class="num">Weight</th><th scope="col">1 out of 5</th><th scope="col">3 out of 5</th><th scope="col">5 out of 5</th></tr></thead>
+            <tbody>${r.meta.categories.map((c) => {
+              const t = DD.TIERS[c.id] || ["", "", ""];
+              return `<tr><th scope="row">${DD.esc(c.name)}</th><td class="num">${c.weight}%</td><td>${DD.esc(t[0])}</td><td>${DD.esc(t[1])}</td><td>${DD.esc(t[2])}</td></tr>`;
+            }).join("")}</tbody>
+          </table></div>
+          <p class="panel-sub" style="margin-top:12px">Overall score = weighted average of the category scores. Weights total ${r.meta.categories.reduce((s, c) => s + c.weight, 0)}%, so each weight counts relative to that total.</p>
+        </section>`
+      : "";
+
+    root.innerHTML = `${status}
+      <section class="panel" style="margin-top:12px"><h2 class="panel-title">Details</h2>
+        <dl class="kv">
+          <dt>Source</dt><dd>${DD.esc(r.source)} (config/rubric.default.md)</dd>
+          <dt>Version</dt><dd class="mono" title="${DD.esc(r.hash)}">${DD.esc(r.version)}</dd>
+          <dt>Maximum length</dt><dd class="mono">${r.meta ? DD.formatDuration(r.meta.maxDurationSeconds) : "–"}</dd>
+        </dl>
+      </section>
+      ${cats}
+      <section class="panel"><h2 class="panel-title">Rubric file</h2>
+        <p class="panel-sub" style="margin-bottom:8px">Read-only. Editing in the app is planned for a later release; edit the file directly for now.</p>
+        <pre class="rubric-src" tabindex="0" aria-label="Rubric file content">${DD.esc(r.text)}</pre>
+      </section>`;
+  }
+  DD.onRubricModeChange = render;
+  render();
+})();
+</script>
+</body>
+</html>

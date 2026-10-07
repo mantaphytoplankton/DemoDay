@@ -1,0 +1,48 @@
+{
+  "name": "demoday",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -H 127.0.0.1",
+    "build": "next build",
+    "start": "next start -H 127.0.0.1",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "judge": "node --disable-warning=ExperimentalWarning scripts/judge-cli.ts"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "5.9.1",
+    "@tanstack/react-query": "5.101.1",
+    "next": "16.2.11",
+    "openai": "6.39.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-hook-form": "7.80.0",
+    "zod": "4.4.3",
+    "zustand": "5.0.14"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "@tailwindcss/postcss": "4.3.1",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.7",
+    "@types/node": "26.6.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "@vitest/coverage-v8": "4.1.9",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.2.11",
+    "jsdom": "30.1.2",
+    "postcss": "8.5.29",
+    "tailwindcss": "4.3.1",
+    "typescript": "5.9.3",
+    "vitest": "4.1.9"
+  },
+  "type": "module"
+}

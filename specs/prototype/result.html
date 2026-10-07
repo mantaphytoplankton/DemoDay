@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Result · DemoDay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Atkinson+Hyperlegible+Next:wght@400;600&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,90,600&display=swap">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+<main id="main" tabindex="-1">
+  <div class="page" style="max-width:960px">
+    <p style="margin-bottom:12px"><a href="evaluate.html">Back to Evaluate</a></p>
+    <div id="content"></div>
+  </div>
+</main>
+
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(function () {
+  "use strict";
+  DD.mountShell("evaluate");
+  const root = DD.$("#content");
+  const id = new URLSearchParams(location.search).get("id");
+  const ev = id ? DD.store.get(id) : null;
+
+  if (!ev) {
+    document.title = "Result not found · DemoDay";
+    root.innerHTML = `
+      <div class="page-head"><h1 class="page-title">Result not found</h1></div>
+      <div class="banner banner-info">
+        <div><p class="banner-title">This evaluation is not stored.</p>
+        <p class="banner-body">It may have been deleted. Evaluate the video again to get a new scorecard.</p>
+        <div class="btn-row"><a class="btn btn-primary" href="evaluate.html">Evaluate a video</a></div></div>
+      </div>`;
+    return;
+  }
+
+  document.title = ev.fileName + " · DemoDay";
+  if (ev.status === "Completed") {
+    root.innerHTML = `<div class="page-head"><h1 class="page-title">Scorecard</h1>${DD.stateBadge("Completed")}</div>
+      ${DD.renderScorecard(ev, { prefix: "res" })}`;
+    DD.bindScorecard(root);
+  } else {
+    root.innerHTML = `<div class="page-head"><h1 class="page-title">${DD.esc(ev.fileName)}</h1>${DD.stateBadge(ev.status)}</div>
+      <div class="banner banner-failed">
+        <span class="state state-failed">${DD.icon("failed")}</span>
+        <div><p class="banner-title">${DD.esc(ev.error.reason)}</p>
+        <p class="banner-body">Stopped at step "${DD.esc(ev.error.step)}" on ${DD.formatTime(ev.updatedAt)}. ${DD.esc(ev.error.help)}</p>
+        <div class="btn-row"><a class="btn btn-primary" href="evaluate.html">Evaluate another video</a></div></div>
+      </div>`;
+  }
+})();
+</script>
+</body>
+</html>

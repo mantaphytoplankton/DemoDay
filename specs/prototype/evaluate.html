@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evaluate a video · DemoDay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Atkinson+Hyperlegible+Next:wght@400;600&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,90,600&display=swap">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+<main id="main" tabindex="-1">
+  <div class="page">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-photo" style="background-image:url('assets/img/hero-pitch.jpg')" role="img" aria-label="A team presenting their project on a hackathon stage while the next team waits"></div>
+      <div class="hero-body">
+        <div class="lockup" id="hero-lockup">
+          <span class="lockup-tag"><b>Single video evaluation</b>AI co-pilot for hackathon judges</span>
+        </div>
+        <h1 class="hero-title" id="hero-title">Judge the demo, <span class="hl">not the deck.</span></h1>
+        <p class="hero-sub">Upload one team's 3-minute video. DemoDay scores it against the rubric on what the team actually showed.</p>
+        <ul class="stickers" id="stickers" aria-label="Rubric categories and weights">
+          <li class="sticker">Working Solution <b>25%</b></li>
+          <li class="sticker">Meaningful Use of AI <b>20%</b></li>
+          <li class="sticker">UX &amp; Value <b>15%</b></li>
+        </ul>
+      </div>
+      <div class="clock" id="clock" data-state="limit">
+        <div class="clock-label" id="clock-label">Pitch limit</div>
+        <div class="clock-value"><span class="clock-num mono" id="clock-num">3:00</span><span class="clock-limit" id="clock-limit" hidden>/ 3:00</span></div>
+        <div class="clock-note" id="clock-note">Longer videos are flagged</div>
+      </div>
+    </section>
+
+    <div class="grid-eval">
+      <div>
+        <!-- SNG-01: upload -->
+        <section class="panel" id="upload-panel" aria-labelledby="up-title">
+          <h2 class="sr-only" id="up-title">Upload a video</h2>
+          <label class="dropzone" id="dropzone">
+            <input type="file" id="file-input" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm" aria-describedby="dz-hint file-error">
+            <span class="dropzone-title">Drop a video here or <u>choose a file</u></span>
+            <span class="dropzone-hint" id="dz-hint" style="display:block">MP4, MOV or WebM · up to 1 GB · about 3 minutes, 16:9 screen recording with narration</span>
+          </label>
+          <div id="file-error" class="field-error" role="alert" hidden></div>
+        </section>
+
+        <!-- SNG-02: live progress -->
+        <section class="panel" id="run-panel" aria-labelledby="run-title" hidden>
+          <div class="file-row">
+            <h2 class="file-name" id="run-title"></h2>
+            <span class="secondary mono" id="run-meta" style="font-size:13px"></span>
+          </div>
+          <div id="run-status" style="margin-top:6px"></div>
+          <ol class="steps" id="steps" aria-label="Evaluation steps"></ol>
+          <div class="progress" id="upload-progress" role="progressbar" aria-label="Upload progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><span></span></div>
+          <p class="soft-tip" id="soft-tip" hidden></p>
+        </section>
+
+        <div id="outcome" style="margin-top:12px"></div>
+      </div>
+
+      <aside>
+        <section class="panel" aria-labelledby="recent-title">
+          <h2 class="panel-title" id="recent-title">Recent evaluations</h2>
+          <div id="recent"></div>
+        </section>
+        <section class="panel" aria-labelledby="how-title">
+          <h2 class="panel-title" id="how-title">How scoring works</h2>
+          <p class="panel-sub">The AI watches the whole video, including audio, and scores each rubric category from 1 to 5 with remarks. The overall score is the weighted average of the category scores.</p>
+          <p class="panel-sub" style="margin-top:8px"><a href="rubric.html">View the active rubric</a></p>
+        </section>
+      </aside>
+    </div>
+  </div>
+</main>
+
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/evaluate.js"></script>
+</body>
+</html>

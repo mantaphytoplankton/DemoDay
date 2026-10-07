@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DemoDay S-1 prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Atkinson+Hyperlegible+Next:wght@400;600&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,90,600&display=swap">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+<main id="main" tabindex="-1">
+  <div class="page">
+    <section class="hero" aria-labelledby="idx-title">
+      <div class="hero-photo" style="background-image:url('assets/img/demo-room.jpg')" role="img" aria-label="Hackathon participants at laptops watching a project demo on a projector screen"></div>
+      <div class="hero-body">
+        <div class="lockup" id="idx-lockup">
+          <span class="lockup-tag"><b>S-1 prototype</b>Single video upload and rubric scorecard</span>
+        </div>
+        <h1 class="hero-title" id="idx-title">Every demo, <span class="hl">scored on evidence.</span></h1>
+        <p class="hero-sub">Use the prototype controls at the bottom left to switch between outcomes: normal, slow, and each failure.</p>
+      </div>
+    </section>
+    <ul class="hub-list">
+      <li><a href="evaluate.html"><div class="panel">
+        <p class="hub-code">SNG-01 · SNG-02 · SNG-03</p>
+        <h2 class="panel-title" style="margin-top:4px">Evaluate a video</h2>
+        <p class="panel-sub">Upload with file checks, live steps with the 10s tip, failure reasons, and the scorecard.</p>
+      </div></a></li>
+      <li><a href="result.html"><div class="panel">
+        <p class="hub-code">SNG-03</p>
+        <h2 class="panel-title" style="margin-top:4px">Result page</h2>
+        <p class="panel-sub">A stored evaluation, reopened after reload. Open one from Recent evaluations; this link shows the not-found state.</p>
+      </div></a></li>
+      <li><a href="rubric.html"><div class="panel">
+        <p class="hub-code">JDG-01</p>
+        <h2 class="panel-title" style="margin-top:4px">Rubric</h2>
+        <p class="panel-sub">Active rubric, weights, tiers and version, including the default-rubric and invalid-configuration states.</p>
+      </div></a></li>
+    </ul>
+
+    <section class="panel" style="margin-top:12px">
+      <h2 class="panel-title">What is real and what is simulated</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th scope="col">Behavior</th><th scope="col">In this prototype</th></tr></thead>
+        <tbody>
+          <tr><td>File type, 1 GB size limit, video content check</td><td>Real, on the chosen file</td></tr>
+          <tr><td>Video length and the over-3:00 flag</td><td>Real, measured in the browser (unknown if the browser cannot decode the codec)</td></tr>
+          <tr><td>Rubric parsing, validation and version hash</td><td>Real</td></tr>
+          <tr><td>Weighted overall score</td><td>Real calculation from the rubric weights</td></tr>
+          <tr><td>Upload, video processing, AI scoring and their timing</td><td>Simulated; outcome chosen in prototype controls</td></tr>
+          <tr><td>Category scores, remarks and overall comments</td><td>Sample output, the same for every video</td></tr>
+          <tr><td>Stored evaluations</td><td>Browser storage, standing in for the server's data folder</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+  </div>
+</main>
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  DD.mountShell("");
+  DD.mountCredits(["room"]);
+  DD.$("#idx-lockup").insertAdjacentHTML("afterbegin", DD.logoMark(40) + '<span class="lockup-name">DemoDay</span>');
+</script>
+</body>
+</html>

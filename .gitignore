@@ -1,0 +1,24 @@
+node_modules
+.next
+.env.local
+.env*.local
+# Credentials: any .env variant (the template stays tracked) and key files
+.env
+.env.*
+!.env.local.example
+*service-account*.json
+*-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f].json
+*.pem
+*.p12
+*.key
+.next-dev.pid
+.next-dev.log
+coverage
+playwright-report
+test-results
+.DS_Store
+data/
+*.tsbuildinfo
+next-env.d.ts
+.next-e2e
+.next-*
