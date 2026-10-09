@@ -93,6 +93,8 @@ test.describe("S-4 overrides and delete (TBL-03, RSM-07)", () => {
     await expect(page.getByRole("link", { name: "Second Event" })).toHaveCount(0);
     await page.getByLabel("Google Drive folder link").fill(SECOND);
     await page.getByRole("button", { name: "Start batch" }).click();
+    // The new run (same folder, same batch id) starts from Pending, not from the deleted batch's results.
+    await expect(page.getByTestId("batch-counts")).toHaveText(/^0 completed/, { timeout: 15_000 });
     await expect(page.getByTestId("batch-counts")).toHaveText("3 completed · 0 in progress · 0 failed · 0 pending", { timeout: 60_000 });
   });
 });

@@ -169,10 +169,20 @@ describe("GET video (SNG-04)", () => {
     const { evaluationId } = (await (await upload("a.webm", await video(), "video/webm")).json()) as { evaluationId: string };
     await getApp().singleLane.idle();
     const rec = (await (await GET_ONE(new Request("http://x"), params(evaluationId))).json()) as any;
-    expect(rec.result.outputVersion).toBe(2);
+    expect(rec.result.outputVersion).toBe(3);
     expect(rec.result.observations.length).toBeGreaterThan(0);
     expect(rec.result.observations.every((o: any) => /^\d{2}:\d{2}$/.test(o.at))).toBe(true);
     expect(rec.result.flags).toMatchObject({ audio: "ok", impactClaimedWithoutHow: true });
+  });
+
+  it("should_store_the_transcript_through_the_api_and_return_it_as_plain_data (JDG-08)", async () => {
+    const { evaluationId } = (await (await upload("a.webm", await video(), "video/webm")).json()) as { evaluationId: string };
+    await getApp().singleLane.idle();
+    const rec = (await (await GET_ONE(new Request("http://x"), params(evaluationId))).json()) as any;
+    expect(rec.result.transcript.length).toBe(5);
+    expect(rec.result.transcript[0]).toEqual({ from: "00:00", to: "00:24", speech: true, text: "Fixture output: spoken words, part 1." });
+    expect(rec.result.transcript[2]).toMatchObject({ speech: false, text: "" });
+    expect(rec.result.transcript.at(-1).to).toBe("02:00");
   });
 });
 

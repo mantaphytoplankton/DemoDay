@@ -7,8 +7,13 @@ import { loadPrompts } from "../../src/server/agent/prompt.ts";
 import type { ModelOutput } from "../../src/server/agent/output-schema.ts";
 
 const rubric = async () => (await inspectRubric({ dataDir: "/none", defaultPath: path.join(process.cwd(), "config/rubric.default.md") })) as LoadedRubric;
+const SUMMARY =
+  "A lease-review app for first-time renters who struggle to understand rental contracts. The demo uploads a twelve-page PDF lease " +
+  "and the app returns a plain-language summary with highlighted risk clauses. The team says it saves renters the cost of a legal review.";
 const remarks = "The flow runs at 01:42 where a summary is generated from an uploaded PDF, shown on screen.";
 const output = (): ModelOutput => ({
+  transcript: [{ from: "00:00", to: "02:00", speech: true, text: "We built a lease summariser for first-time renters." }],
+  summary: SUMMARY,
   observations: [
     { at: "00:12", segment: "context", kind: "demonstrated", note: "Problem and audience stated" },
     { at: "01:42", segment: "demo", kind: "demonstrated", note: "AI summary generated from uploaded PDF" },
@@ -19,7 +24,7 @@ const output = (): ModelOutput => ({
   flags: { noWorkingDemo: false, audio: "ok", narratedNotShown: true, impactClaimedWithoutHow: false },
 });
 
-describe("output schema v2 (JDG-05, JDG-06)", () => {
+describe("output schema v3 (JDG-05, JDG-06, JDG-08)", () => {
   it("should_require_observations_and_flags", async () => {
     const s = buildModelOutputSchema((await rubric()).meta);
     expect(s.safeParse(output()).success).toBe(true);
@@ -45,8 +50,8 @@ describe("output schema v2 (JDG-05, JDG-06)", () => {
 
   it("should_ask_for_evidence_before_scores_in_the_request_schema", async () => {
     const js = toRequestSchema(buildModelOutputSchema((await rubric()).meta)) as { properties: object; required: string[] };
-    expect(Object.keys(js.properties)).toEqual(["observations", "categories", "overallComments", "flags"]);
-    expect(js.required).toEqual(["observations", "categories", "overallComments", "flags"]);
+    expect(Object.keys(js.properties)).toEqual(["transcript", "summary", "observations", "categories", "overallComments", "flags"]);
+    expect(js.required).toEqual(["transcript", "summary", "observations", "categories", "overallComments", "flags"]);
   });
 });
 

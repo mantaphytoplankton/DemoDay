@@ -1,4 +1,4 @@
-import { buildModelOutputSchema, toRequestSchema, type ModelOutput } from "./output-schema.ts";
+import { buildModelOutputSchema, buildRequestSchema, missingExtras, salvageOutput, type ModelOutput } from "./output-schema.ts";
 import { finalizeResult } from "./postprocess.ts";
 import { loadPrompts, renderUserPrompt, type Prompts } from "./prompt.ts";
 import { generatePolicyFor, POLL_POLICY, abortableSleep, withRetry, type RetryHooks } from "./retry.ts";
@@ -81,7 +81,7 @@ export async function judgeVideo(input: JudgeInput, deps: JudgeDeps): Promise<Ju
 
   const prompts = deps.prompts ?? (await loadPrompts());
   const schema = buildModelOutputSchema(input.rubric.meta);
-  const requestSchema = toRequestSchema(schema);
+  const requestSchema = buildRequestSchema(input.rubric.meta);
 
   // 1. Upload (JDG-03)
   await input.onStep("Uploading");
@@ -164,7 +164,8 @@ export async function judgeVideo(input: JudgeInput, deps: JudgeDeps): Promise<Ju
       }
     };
 
-    const interpret = (res: GenerateResponse): { ok: true; value: ModelOutput } | { ok: false; raw: string; issues: string } => {
+    type Interpreted = { ok: true; value: ModelOutput } | { ok: false; raw: string; issues: string; salvage?: ModelOutput | null };
+    const interpret = (res: GenerateResponse): Interpreted => {
       usage.promptTokens += res.usageMetadata?.promptTokenCount ?? 0;
       usage.outputTokens += res.usageMetadata?.candidatesTokenCount ?? 0;
       usage.thoughtsTokens += res.usageMetadata?.thoughtsTokenCount ?? 0;
@@ -190,7 +191,12 @@ export async function judgeVideo(input: JudgeInput, deps: JudgeDeps): Promise<Ju
       const v = schema.safeParse(parsed);
       if (v.success) return { ok: true, value: v.data as ModelOutput };
       const issues = v.error.issues.slice(0, 20).map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ");
-      return { ok: false, raw, issues };
+      return { ok: false, raw, issues, salvage: salvageOutput(parsed, input.rubric.meta) };
+    };
+    /** After a failed repair: the salvaged scorecard missing the fewest extra fields, preferring the repaired answer. */
+    const bestSalvage = (...tries: Interpreted[]): ModelOutput | null => {
+      const options = tries.flatMap((x) => (!x.ok && x.salvage ? [x.salvage] : []));
+      return options.sort((a, b) => missingExtras(a).length - missingExtras(b).length)[0] ?? null;
     };
 
     let output: ModelOutput;
@@ -210,8 +216,15 @@ export async function judgeVideo(input: JudgeInput, deps: JudgeDeps): Promise<Ju
             { role: "user", parts: [{ text: `Your response did not match the schema: ${first.issues} Return the complete corrected JSON object only.` }] },
           ]),
         );
-        if (!second.ok) throw new JudgeError("INVALID_MODEL_OUTPUT", step, second.issues);
-        output = second.value;
+        if (second.ok) {
+          output = second.value;
+        } else {
+          // A missing transcript never discards valid scores (JDG-08): keep the scorecard, store the extra as null.
+          const kept = bestSalvage(second, first);
+          if (!kept) throw new JudgeError("INVALID_MODEL_OUTPUT", step, second.issues);
+          log("agent.extras_missing", { fields: missingExtras(kept), issues: second.issues });
+          output = kept;
+        }
       }
     } catch (e) {
       return fail(e);
@@ -221,7 +234,7 @@ export async function judgeVideo(input: JudgeInput, deps: JudgeDeps): Promise<Ju
     const { droppedObservations, ...scored } = finalizeResult(output, input.rubric, durationSeconds);
     if (droppedObservations) log("agent.observations_dropped", { count: droppedObservations });
     return {
-      outputVersion: 2,
+      outputVersion: 3,
       ...scored,
       rubric: { maxDurationSeconds: input.rubric.meta.maxDurationSeconds, categories: input.rubric.meta.categories },
       provenance: {

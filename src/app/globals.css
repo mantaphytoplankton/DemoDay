@@ -557,3 +557,14 @@ dialog[open] { margin: auto; }
 .review-layout .cat-preview { grid-column: 1 / -1; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .review-layout .cat[data-open="true"] .cat-preview { display: none; }
 .review-layout .cat-row > .btn-text { grid-column: 1 / -1; justify-self: start; }
+
+/* =====================================================================
+   S-5: transcript (JDG-08). Own scroll area so a 3-minute transcript does not stretch the page.
+   ===================================================================== */
+.transcript-coverage { margin: 0 0 6px; font-size: 13px; color: var(--color-text-secondary); }
+.transcript-warning { margin: 0 0 8px; padding: 6px 10px; font-size: 13px; border-left: 3px solid var(--color-state-hold); background: var(--color-surface-2); border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+.transcript-list { list-style: none; margin: 0; padding: 4px 8px 4px 0; max-height: 320px; overflow-y: auto; display: grid; gap: 6px; }
+.transcript-seg { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; align-items: baseline; font-size: 13px; max-width: 80ch; }
+.transcript-silent .transcript-text { color: var(--color-text-muted); font-style: italic; }
+/* S-5: video summary (JDG-09), above the category scores */
+.video-summary { margin: 0; max-width: 72ch; }

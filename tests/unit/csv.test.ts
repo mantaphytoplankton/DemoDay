@@ -61,6 +61,15 @@ const columns = [
   { id: "meaningful_ai", name: "Meaningful Use of AI" },
 ];
 
+describe("buildScoresCsv transcript flag (JDG-08)", () => {
+  it("should_list_an_early_transcript_end_in_the_flags_column", () => {
+    const b: BatchManifest = { ...batch, teams: [row("Team A", 0, { status: "Completed", summary: { ...summary(4, "r"), transcriptEarlyEnd: 90 } })] };
+    const rows = parseCsv(buildScoresCsv(b, columns).slice(1));
+    const flags = rows[1]![rows[0]!.indexOf("Flags")]!;
+    expect(flags).toBe("Exceeds 3-minute maximum (3:24); Transcript ends early (01:30 of 03:24)");
+  });
+});
+
 describe("buildScoresCsv (TBL-04)", () => {
   const csv = buildScoresCsv(batch, columns);
   const rows = parseCsv(csv.slice(1));
@@ -72,7 +81,7 @@ describe("buildScoresCsv (TBL-04)", () => {
 
   it("should_have_a_header_and_one_row_per_team_in_queue_order", () => {
     expect(rows[0]).toEqual([
-      "Team", "Status", "Status reason",
+      "Team", "Status", "Status reason", "Video summary",
       "Working Solution AI score", "Working Solution final score", "Working Solution remarks",
       "Meaningful Use of AI AI score", "Meaningful Use of AI final score", "Meaningful Use of AI remarks",
       "Overall AI score", "Overall final score", "Overall comments",
@@ -85,20 +94,21 @@ describe("buildScoresCsv (TBL-04)", () => {
   it("should_keep_unicode_names_commas_quotes_and_multiline_comments_intact", () => {
     const done = rows[1]!;
     expect(done[0]).toBe("团队 Ünïcode");
-    expect(done[3]).toBe("4");
+    expect(done[3]).toBe(""); // no video summary (judged before JDG-09)
     expect(done[4]).toBe("4");
-    expect(done[5]).toBe("Remark, with comma");
-    expect(done[9]).toBe("3.56");
-    expect(done[11]).toBe('Line one, "quoted"\nline two');
-    expect(done[12]).toBe("Exceeds 3-minute maximum (3:24)");
-    expect(done[13]).toBe("2 videos found; used the most recent (v2.webm)");
-    expect(done[14]).toBe(""); // not overridden
-    expect(done[17]).toBe(at);
+    expect(done[5]).toBe("4");
+    expect(done[6]).toBe("Remark, with comma");
+    expect(done[10]).toBe("3.56");
+    expect(done[12]).toBe('Line one, "quoted"\nline two');
+    expect(done[13]).toBe("Exceeds 3-minute maximum (3:24)");
+    expect(done[14]).toBe("2 videos found; used the most recent (v2.webm)");
+    expect(done[15]).toBe(""); // not overridden
+    expect(done[18]).toBe(at);
   });
 
   it("should_neutralize_formula_like_team_names_and_leave_unscored_cells_empty", () => {
     expect(rows[2]![0]).toBe('\'=HYPERLINK("x")');
     expect(rows[2]![2]).toBe("No video found in folder");
-    expect(rows[3]!.slice(3, 12).every((c) => c === "")).toBe(true);
+    expect(rows[3]!.slice(3, 13).every((c) => c === "")).toBe(true);
   });
 });

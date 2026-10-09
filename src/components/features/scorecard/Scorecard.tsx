@@ -10,6 +10,8 @@ import { LocalTime } from "@/components/ui/LocalTime";
 import { flagLabels } from "@/shared/flags";
 import { EvidenceStrip, ObservationList, TimestampedText } from "./EvidenceStrip";
 import { OverrideDialog } from "./OverrideDialog";
+import { Transcript } from "./Transcript";
+import { transcriptEarlyEnd } from "@/shared/transcript";
 import type { FinalScores, Overrides } from "@/shared/scoring";
 import { useUiStore } from "@/hooks/useUiStore";
 
@@ -51,7 +53,7 @@ export const Scorecard = forwardRef<HTMLHeadingElement, ScorecardProps>(function
     if (signal !== first.current) toggleRef.current();
   }, [signal]);
 
-  const flags = flagLabels({ ...r, maxDurationSeconds: r.rubric.maxDurationSeconds });
+  const flags = flagLabels({ ...r, maxDurationSeconds: r.rubric.maxDurationSeconds, transcriptEarlyEnd: transcriptEarlyEnd(r.transcript, r.durationSeconds) });
   const overridden = Boolean(final?.overridden);
   const shownOverall = overridden ? final!.overallScore : r.overallScore;
   const cls = scoreClass(shownOverall);
@@ -96,6 +98,15 @@ export const Scorecard = forwardRef<HTMLHeadingElement, ScorecardProps>(function
           </div>
         </div>
       </div>
+
+      <h3 className="section-label">{t("summary.title")}</h3>
+      {r.summary === undefined || r.outputVersion < 3 ? (
+        <p className="panel-sub">{t("summary.none")}</p>
+      ) : r.summary === null ? (
+        <p className="panel-sub">{t("summary.unavailable")}</p>
+      ) : (
+        <p className="video-summary" data-testid="video-summary">{r.summary}</p>
+      )}
 
       <div className="btn-row" style={{ justifyContent: "space-between", marginTop: 8 }}>
         <h3 className="section-label" style={{ margin: "8px 0 0" }}>{t("scorecard.categories")}</h3>
@@ -196,6 +207,10 @@ export const Scorecard = forwardRef<HTMLHeadingElement, ScorecardProps>(function
 
       <h3 className="section-label">{t("scorecard.comments")}</h3>
       <p className="comments">{r.overallComments}</p>
+
+      <h3 className="section-label">{t("transcript.title")}</h3>
+      <Transcript transcript={r.transcript} outputVersion={r.outputVersion} durationSeconds={r.durationSeconds} onSeek={onSeek} />
+
       <div className="prov" aria-label={t("scorecard.provenance")}>
         <span><b>{t("scorecard.model")}</b> {r.provenance.model}{r.provenance.provider === "vertex" ? ` ${t("scorecard.viaVertex")}` : ""}</span>
         <span>

@@ -1,11 +1,13 @@
 import { t } from "../i18n/t.ts";
-import { formatDuration } from "./format.ts";
+import { formatDuration, formatTimestamp } from "./format.ts";
 
 export interface FlagSource {
   exceedsMaxDuration: boolean;
   durationSeconds: number;
   maxDurationSeconds?: number;
   flags?: { noWorkingDemo: boolean; audio: "ok" | "missing" | "unintelligible"; narratedNotShown: boolean; impactClaimedWithoutHow: boolean };
+  /** JDG-08: where the transcript ends, when it ends early (see shared/transcript.ts). */
+  transcriptEarlyEnd?: number;
 }
 
 /** "3-minute" for whole minutes, otherwise m:ss. */
@@ -23,5 +25,8 @@ export function flagLabels(r: FlagSource): string[] {
   if (f?.audio === "unintelligible") out.push(t("flag.audioUnintelligible"));
   if (f?.narratedNotShown) out.push(t("flag.narratedNotShown"));
   if (f?.impactClaimedWithoutHow) out.push(t("flag.impactClaimed"));
+  if (r.transcriptEarlyEnd !== undefined) {
+    out.push(t("flag.transcriptEarlyEnd", { end: formatTimestamp(r.transcriptEarlyEnd), duration: formatTimestamp(r.durationSeconds) }));
+  }
   return out;
 }

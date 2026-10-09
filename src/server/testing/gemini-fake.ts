@@ -6,7 +6,12 @@
  * Scenario per upload: an ASCII marker in the uploaded bytes, e.g. "DD-SCENARIO:unprocessable",
  * and an optional "DD-DURATION:204" (seconds). Unit tests can force a scenario in the constructor.
  */
-export type FakeScenario = "normal" | "unprocessable" | "slow" | "unavailable" | "server-error" | "busy-once" | "incomplete" | "repair" | "blocked";
+export type FakeScenario =
+  | "normal" | "unprocessable" | "slow" | "unavailable" | "server-error" | "busy-once" | "incomplete" | "repair" | "blocked"
+  // JDG-08 transcript cases
+  | "transcript-early" | "transcript-missing" | "no-speech"
+  // JDG-09 summary case
+  | "summary-missing";
 
 interface FakeFile {
   name: string;
@@ -162,7 +167,26 @@ export class FakeGemini {
     const scores = [4, 3, 5, 3, 4, 2, 5, 3];
     const mmss = (sec: number) => `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(Math.floor(sec % 60)).padStart(2, "0")}`;
     const d = f.durationSeconds;
+    // Speech in five even segments with a stretch without speech in the middle; "transcript-early" stops halfway.
+    const end = f.scenario === "transcript-early" ? d * 0.5 : d;
+    const cuts = [0, 0.2, 0.4, 0.5, 0.7, 1].map((x) => x * end);
+    const transcript =
+      f.scenario === "no-speech"
+        ? [{ from: "00:00", to: mmss(d), speech: false, text: "" }]
+        : cuts.slice(0, -1).map((from, i) =>
+            i === 2
+              ? { from: mmss(from), to: mmss(cuts[i + 1]!), speech: false, text: "" }
+              : { from: mmss(from), to: mmss(cuts[i + 1]!), speech: true, text: `Fixture output: spoken words, part ${i + 1}.` },
+          );
     const out = {
+      ...(f.scenario === "transcript-missing" ? {} : { transcript }),
+      ...(f.scenario === "summary-missing"
+        ? {}
+        : {
+            summary:
+              "Fixture output for automated tests, not a description of the uploaded video. The team names a problem and the people who have it. " +
+              "The demo then puts an input into the product and shows the result on screen. At the end the team claims a benefit for its users without showing it.",
+          }),
       observations: [
         { at: mmss(d * 0.08), segment: "context", kind: "demonstrated", note: "Fixture output: the team names the user and the problem." },
         { at: mmss(d * 0.5), segment: "demo", kind: "demonstrated", note: "Fixture output: input goes in and a result is shown." },
@@ -172,7 +196,7 @@ export class FakeGemini {
         ids.map((id, i) => [id, { remarks: `Fixture output for automated tests. Category ${id} remarks cite 00:3${i} as demonstrated evidence.`, score: scores[i % scores.length] }]),
       ),
       overallComments: "Fixture output for automated tests. This is not an AI evaluation of the uploaded video.",
-      flags: { noWorkingDemo: false, audio: "ok", narratedNotShown: false, impactClaimedWithoutHow: true },
+      flags: { noWorkingDemo: false, audio: f.scenario === "no-speech" ? "missing" : "ok", narratedNotShown: false, impactClaimedWithoutHow: true },
     };
     return reply(JSON.stringify(out));
   }

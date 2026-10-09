@@ -10,6 +10,7 @@ import type { BatchRepo } from "../store/batches.ts";
 import type { EventBus } from "./events.ts";
 import { toPublicRow, type TeamRow, type TeamSummary } from "../../shared/schemas/batch.ts";
 import type { JudgeResult } from "../../shared/schemas/judge-result.ts";
+import { transcriptEarlyEnd } from "../../shared/transcript.ts";
 import { errorMessage, type ErrorCode } from "../../shared/errors.ts";
 import type { TeamStatus } from "../../shared/status.ts";
 import { t } from "../../i18n/t.ts";
@@ -69,6 +70,8 @@ function summaryOf(result: JudgeResult, completedAt: string): TeamSummary {
     exceedsMaxDuration: result.exceedsMaxDuration,
     maxDurationSeconds: result.rubric.maxDurationSeconds,
     flags: result.flags,
+    transcriptEarlyEnd: transcriptEarlyEnd(result.transcript, result.durationSeconds),
+    videoSummary: result.summary ?? undefined,
     rubricVersion: result.provenance.rubricVersion,
     model: result.provenance.model,
     completedAt,

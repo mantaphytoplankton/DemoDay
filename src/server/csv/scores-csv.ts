@@ -14,7 +14,7 @@ export interface CsvColumn {
  */
 export function buildScoresCsv(batch: BatchManifest, columns: CsvColumn[]): string {
   const header = [
-    "Team", "Status", "Status reason",
+    "Team", "Status", "Status reason", "Video summary",
     ...columns.flatMap((c) => [`${c.name} AI score`, `${c.name} final score`, `${c.name} remarks`]),
     "Overall AI score", "Overall final score", "Overall comments",
     "Flags", "Warnings", "Overridden", "Rubric version", "Model", "Evaluated at",
@@ -28,6 +28,7 @@ export function buildScoresCsv(batch: BatchManifest, columns: CsvColumn[]): stri
       r.teamName,
       t(`status.${r.status}`),
       r.error?.message ?? "",
+      s?.videoSummary ?? "",
       ...columns.flatMap((c) => {
         const v = s?.categories[c.id];
         return [v?.score ?? "", s?.final?.categories[c.id] ?? v?.score ?? "", v?.remarks ?? ""];

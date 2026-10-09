@@ -8,8 +8,13 @@ import { renderUserPrompt, loadPrompts } from "../../src/server/agent/prompt.ts"
 async function defaultRubric(): Promise<LoadedRubric> {
   return (await inspectRubric({ dataDir: "/nonexistent", defaultPath: path.join(process.cwd(), "config/rubric.default.md") })) as LoadedRubric;
 }
+const SUMMARY =
+  "A lease-review app for first-time renters who struggle to understand rental contracts. The demo uploads a twelve-page PDF lease " +
+  "and the app returns a plain-language summary with highlighted risk clauses. The team says it saves renters the cost of a legal review.";
 const remarks = "The demo shows the full flow at 00:31 with a real PDF as input and a visible summary.";
 const valid = {
+  transcript: [{ from: "00:00", to: "02:00", speech: true, text: "We built a lease summariser for first-time renters." }],
+  summary: SUMMARY,
   observations: [{ at: "00:31", segment: "demo" as const, kind: "demonstrated" as const, note: "A real PDF goes in and a summary comes out" }],
   categories: {
     working_solution: { remarks, score: 4 },

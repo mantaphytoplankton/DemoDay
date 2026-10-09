@@ -32,6 +32,10 @@ export const TeamSummarySchema = z.object({
   flags: z
     .object({ noWorkingDemo: z.boolean(), audio: z.enum(["ok", "missing", "unintelligible"]), narratedNotShown: z.boolean(), impactClaimedWithoutHow: z.boolean() })
     .optional(),
+  /** JDG-08: end of the transcript in seconds, present only when it ends early. */
+  transcriptEarlyEnd: z.number().nonnegative().optional(),
+  /** JDG-09: the video summary, for the score table export. Absent when there is none. */
+  videoSummary: z.string().optional(),
   rubricVersion: z.string(),
   model: z.string(),
   completedAt: z.string(),

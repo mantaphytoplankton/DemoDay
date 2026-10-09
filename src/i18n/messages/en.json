@@ -263,5 +263,18 @@
   "delete.bodyBatch": "This removes the batch and its {count} team results from DemoDay. Files in Google Drive are not changed. This cannot be undone.",
   "delete.confirm": "Delete",
   "delete.cancel": "Cancel",
-  "delete.failed": "Not deleted: {message}"
+  "delete.failed": "Not deleted: {message}",
+  "transcript.title": "Transcript",
+  "transcript.coverage": "Transcript covers {start}–{end} of {duration}",
+  "transcript.coverageNoLength": "Transcript covers {start}–{end}",
+  "transcript.earlyEnd": "Transcript ends at {end} of {duration}: the model may not have processed the whole video",
+  "transcript.noSpeech": "No speech in this video",
+  "transcript.noSpeechSegment": "[No speech]",
+  "transcript.listLabel": "Transcript, {count} segments",
+  "transcript.none": "No transcript (judged before this feature)",
+  "transcript.unavailable": "Transcript not available for this result",
+  "flag.transcriptEarlyEnd": "Transcript ends early ({end} of {duration})",
+  "summary.title": "Video summary",
+  "summary.none": "No summary (judged before this feature)",
+  "summary.unavailable": "Summary not available for this result"
 }

@@ -2,7 +2,7 @@
 title: Gemini model availability and free-tier quotas
 type: ops-lesson
 status: active
-as_of: 2026-10-07
+as_of: 2026-10-09
 tags:
   - gemini
   - configuration
@@ -76,6 +76,17 @@ The Airbnb slideware video (1:44) returned valid observations and flags on the f
 
 The evidence-first schema order (observations before categories) adds about 4% tokens.
 
+## Transcript and summary (version 3) on the real model (2026-10-09, Vertex)
+
+Both live runs were valid on the first attempt, with no repair turn:
+
+| Video | Transcript | Summary | Output tokens (+ thinking) |
+| --- | --- | --- | --- |
+| YC Demo Day pitch, 2:52, narrated | 14 segments, 495 words, word for word, covering 00:00–02:52; the silent intro marked as no speech; only 1-second gaps between segments | 41 words; states that no software demo is shown and reports the founder's figures as claims | 1,892 (+1,264) |
+| Airbnb slideware, 1:44, music only | One no-speech segment covering 00:00–01:44 (consistent with the "Audio missing" flag) | 49 words, neutral, market and viability points given as claims | 628 (+516) |
+
+The transcript adds roughly 1,000 output tokens for a narrated 3-minute pitch, about a fraction of a cent at Flash prices. The first attempt failed with a bare `400 INVALID_ARGUMENT` caused by the schema, not the model: see [structured-output-limits.md](structured-output-limits.md).
+
 ## Diagnostics that worked (and one that did not)
 
 - **Use Node, not the shell, to call the API.** In this environment, sourcing `.env.local` into the shell (`set -a; . ./.env.local`) failed, and curl calls to `generativelanguage.googleapis.com` intermittently returned an empty `text/html` 404 within about 25 ms, which is not a real API answer. A small Node script using `process.loadEnvFile(".env.local")` and `fetch` gave reliable results. Print `error.details[]` (QuotaFailure `quotaId`/`quotaValue`, RetryInfo `retryDelay`) and the `x-gemini-service-tier` header.
@@ -92,7 +103,7 @@ The evidence-first schema order (observations before categories) adds about 4% t
 - **Choosing a model**: a free-tier key needs a Flash model (`gemini-3.8-flash` verified). Pro needs billing enabled on the key's project.
 - **For real events, enable billing.** 20 requests a day cannot cover a batch, and overload retries use the same budget.
 - **When everything returns 503**, wait, then reopen the batch (ADR-007). Check one video with `make judge` before re-running a large batch.
-- **Several `next dev` processes** keep running on other ports with stale settings. `pkill -f "next dev"` before restarting after changing `.env.local`.
+- **Several `next dev` processes** keep running on other ports with stale settings. Stop them by PID or port (`lsof -ti :<port>`), not with `pkill -f "next dev"`, which also kills the developer's own server ([react-next-test-gotchas.md](../testing/react-next-test-gotchas.md), corrected 2026-10-09).
 
 ## Links
 - specs/tech-spec.md: default changed to `gemini-3.8-flash` on 2026-10-06

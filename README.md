@@ -29,10 +29,12 @@ Drop one team video (MP4, MOV or WebM, up to 1 GB) on **Evaluate**.
 ### Scorecard with evidence
 
 Each result shows:
+- **Video summary:** 40–120 words describing, without judging, the problem and target user, what the demo shows, and the value the team claims.
 - **Scores:** a 1–5 score with the reasoning for each rubric category, the weighted overall score and overall comments.
 - **Data-quality flags:** for example "No working demo walkthrough", "Audio missing", "Narrated, not shown" or "Exceeds 3-minute maximum".
 - **Evidence timeline:** what the AI saw, marked **demonstrated** (shown working) or **claimed** (only said or on a slide), along the expected pitch flow: about 20 s of context, 2 minutes of demo, 40 s on value.
-- **The video beside the scorecard:** selecting any timestamp, in the timeline, the list or the remarks, jumps the video to that moment.
+- **Transcript:** everything said in the video, word for word, with timestamps and stretches without speech marked. It states how much of the video it covers ("Transcript covers 00:00–02:52 of 02:52"). If it stops more than 15 seconds before the end, a warning and the flag "Transcript ends early" show that the model may not have processed the whole video.
+- **The video beside the scorecard:** selecting any timestamp, in the timeline, the list, the remarks or the transcript, jumps the video to that moment.
 
 ![Scorecard with evidence timeline and flags](docs/screenshots/03-result-review.png)
 
@@ -71,7 +73,7 @@ Select a team to open its full scorecard beside the team's video from Drive. **J
 | **Rescan folder** | Add team folders created since the start; re-judge teams whose video changed |
 | **Retry** | Run one failed team again |
 | **Re-judge** | Shown on results judged with an older rubric |
-| **Export CSV** | Download `scores.csv` (opens correctly in Excel and Numbers) |
+| **Export CSV** | Download `scores.csv` with each team's video summary, scores, remarks and flags (opens correctly in Excel and Numbers) |
 | **Delete batch** | Remove the batch and its results from DemoDay after confirming. Drive files are never changed |
 
 Completed teams are never judged twice: results are saved after every team and reused as long as the video is unchanged.

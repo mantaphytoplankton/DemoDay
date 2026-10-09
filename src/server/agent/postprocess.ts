@@ -1,5 +1,6 @@
 import type { LoadedRubric } from "../rubric/load.ts";
-import type { ModelFlags, ModelOutput, Observation } from "./output-schema.ts";
+import { SUMMARY_MAX_WORDS, type ModelFlags, type ModelOutput, type Observation, type TranscriptSegmentOutput } from "./output-schema.ts";
+import type { TranscriptSegment } from "../../shared/transcript.ts";
 
 export const REMARKS_MAX = 1500;
 export const COMMENTS_MAX = 2000;
@@ -21,10 +22,36 @@ export function trimAtSentence(text: string, max: number): string {
   return end > max * 0.5 ? cut.slice(0, end + 1) : cut.slice(0, max - 1).trimEnd() + "…";
 }
 
-/** "mm:ss" → seconds. */
-export function parseTimestamp(at: string): number {
-  const [m, s] = at.split(":").map(Number);
-  return (m ?? 0) * 60 + (s ?? 0);
+export { parseTimestamp } from "../../shared/format.ts";
+import { formatTimestamp, parseTimestamp } from "../../shared/format.ts";
+
+/**
+ * JDG-08: transcript segments in time order. Segments starting after the end of the video cannot be real and are
+ * dropped (like observations); ends are capped at the video length; a "speech" segment without text counts as no speech.
+ */
+export function finalizeTranscript(segments: TranscriptSegmentOutput[] | null, durationSeconds: number): TranscriptSegment[] | null {
+  if (!segments) return null;
+  const length = durationSeconds > 0 ? Math.round(durationSeconds) : Infinity;
+  return segments
+    .map((s) => {
+      const from = parseTimestamp(s.from);
+      const to = Math.min(Math.max(from, parseTimestamp(s.to)), length);
+      const text = s.text.trim();
+      const speech = s.speech && text.length > 0;
+      return { fromS: from, seg: { from: formatTimestamp(from), to: formatTimestamp(to), speech, text: speech ? text : "" } };
+    })
+    .filter((x) => x.fromS <= length)
+    .sort((a, b) => a.fromS - b.fromS)
+    .map((x) => x.seg);
+}
+
+/** JDG-09: keep at most `maxWords` words, cut at the last sentence end that fits. */
+export function trimToWords(text: string, maxWords: number): string {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return words.join(" ");
+  const cut = words.slice(0, maxWords).join(" ");
+  const end = cut.lastIndexOf(". ");
+  return end > cut.length * 0.5 ? cut.slice(0, end + 1) : cut.replace(/[,;:\s]+$/, "") + "…";
 }
 
 export interface ScoredCategories {
@@ -36,6 +63,10 @@ export interface ScoredCategories {
   exceedsMaxDuration: boolean;
   observations: Observation[];
   flags: ModelFlags;
+  /** Null when the model returned no valid transcript (shown as "Transcript not available for this result"). */
+  transcript: TranscriptSegment[] | null;
+  /** Null when the model returned no valid summary (shown as "Summary not available for this result"). */
+  summary: string | null;
   /** Observations dropped because their timestamp lies after the end of the video. */
   droppedObservations: number;
 }
@@ -56,6 +87,8 @@ export function finalizeResult(output: ModelOutput, rubric: LoadedRubric, durati
     .map((o) => ({ ...o, note: trimAtSentence(o.note, 300) }))
     .sort((a, b) => parseTimestamp(a.at) - parseTimestamp(b.at));
   return {
+    transcript: finalizeTranscript(output.transcript, durationSeconds),
+    summary: output.summary === null ? null : trimToWords(output.summary, SUMMARY_MAX_WORDS),
     observations,
     flags: output.flags,
     droppedObservations: output.observations.length - kept.length,

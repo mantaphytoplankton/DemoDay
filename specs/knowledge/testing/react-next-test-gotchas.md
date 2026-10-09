@@ -2,7 +2,7 @@
 title: Test gotchas in this stack (Next 16, React 19, TanStack Query 5, Tailwind 4, Node 24)
 type: ops-lesson
 status: active
-as_of: 2026-10-07
+as_of: 2026-10-09
 tags:
   - testing
   - vitest
@@ -39,6 +39,7 @@ Issues that cost time during S-1, and the fix for each. Two of them were real pr
 | An E2E check broke when the stand-in model gained a field (S-4) | The Gemini stand-in started setting a flag on every video, so "no flags" assertions failed | Assert on the specific element (`.flag` with text "Exceeds"), not a total count; update the stand-in together with the output schema |
 | Static test fakes leak between tests | Class-level `current` instance kept from the previous test | Reset static state in `beforeEach` |
 | React lint: `set-state-in-effect`, impure `Date.now()` in render | React 19 compiler lint rules | Derive values (for example the live-region text) instead of storing them; use state for clock ticks |
+| After deleting a batch and starting the same folder again, the page showed the deleted batch's results and never updated (**product defect**, from S-4, found in S-5) | Batch ids are derived from the folder id (ADR-007), so the new run has the same `["batch", id]` query key. React Query ignores `initialData` when the key is already cached, so the page rendered the old copy; seeing it Completed, `useBatch` never opened the event stream | Remove the cached queries on delete, as evaluation delete already did. Any record that can be recreated under the same id needs its cache cleared when it is deleted |
 
 ## Dev-environment lessons (S-3)
 
@@ -50,6 +51,18 @@ Issues that cost time during S-1, and the fix for each. Two of them were real pr
 ## Process lesson: UI wording drifted from the acceptance criteria for three sprints
 
 SNG-03 (S-1) and JDG-06 required the flag text "Exceeds 3-minute maximum". The UI followed the UI guideline's shorter "Over 3:00 (3:24)", and the tests were written against the UI, so the mismatch went unnoticed until S-4 re-read the stories. **Write E2E and component assertions using the exact text from the acceptance criteria.** When a design document proposes different wording, update the story or record the choice; don't let the two diverge silently.
+
+## Process lesson: a test that passed for the wrong reason (S-5)
+
+The RSM-07 E2E test "deletes a batch and can judge the folder again from scratch" passed in S-4 while the feature was broken: it waited for "3 completed", and the stale cached page already showed that. Two signs were visible but unread:
+- **Duration**: the test took 1.3 s, while judging 3 teams takes about 20 s with the stand-in.
+- **Side effect on the next test**: the batch it started kept running and made the next spec fail with "Another batch is running". All spec files share one E2E server and one data folder.
+
+**Assert the starting state of a new run (for example "0 completed") before the end state, and treat an E2E test that finishes much faster than the work it claims to wait for as suspect.** When a test fails with a state left by an earlier spec, look for the earlier test's weakness before isolating the new one.
+
+## Dev-environment lessons (S-5)
+
+- A throw-away Playwright spec in the scratchpad fails with "Cannot find module '@playwright/test'": modules resolve from the spec's folder. Symlink the project's `node_modules` next to it and pass a config with `testDir` and `webServer` (own port, own build folder).
 
 ## Lesson / guidance
 Push data, then await the rendered result. Fake as little as possible: only the clock, or only the browser boundary (XHR, EventSource). Keep the server's event stream as the single source of live state.

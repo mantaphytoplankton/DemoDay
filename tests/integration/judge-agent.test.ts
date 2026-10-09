@@ -7,6 +7,7 @@ import { FakeGemini, type FakeGeminiOptions } from "../../src/server/testing/gem
 import { inspectRubric, type LoadedRubric } from "../../src/server/rubric/load.ts";
 import { loadPrompts } from "../../src/server/agent/prompt.ts";
 import { JudgeResultSchema } from "../../src/shared/schemas/judge-result.ts";
+import { transcriptEarlyEnd } from "../../src/shared/transcript.ts";
 
 const VIDEO = path.join(process.cwd(), "tests/fixtures/videos/team-alpha.webm");
 
@@ -87,6 +88,81 @@ describe("judgeVideo happy path (JDG-03, JDG-04)", () => {
     await judgeVideo(input, deps);
     expect(sleeps.slice(0, 15).every((ms) => ms === 2000)).toBe(true);
     expect(sleeps.slice(15)).toContain(5000);
+  });
+});
+
+describe("judgeVideo transcript (JDG-08)", () => {
+  const generateCalls = (fake: FakeGemini) => fake.requests.filter((q) => q.path.endsWith(":generateContent")).length;
+
+  it("should_return_a_transcript_covering_the_whole_video_in_the_same_request_as_the_scores", async () => {
+    const { fake, deps, input } = await setup();
+    const r = await judgeVideo(input, deps);
+    expect(r.outputVersion).toBe(3);
+    expect(r.transcript!.map((s) => [s.from, s.to, s.speech])).toEqual([
+      ["00:00", "00:24", true], ["00:24", "00:48", true], ["00:48", "01:00", false], ["01:00", "01:24", true], ["01:24", "02:00", true],
+    ]);
+    expect(transcriptEarlyEnd(r.transcript, r.durationSeconds)).toBeUndefined();
+    expect(generateCalls(fake)).toBe(1);
+  });
+
+  it("should_ask_for_the_transcript_in_the_request_schema_before_the_observations", async () => {
+    const { fake, deps, input } = await setup();
+    const sent: string[] = [];
+    const capture: typeof fetch = (url, init) => {
+      if (String(url).endsWith(":generateContent")) sent.push(String(init?.body));
+      return fake.fetch(url, init);
+    };
+    const provider = new GeminiProvider({ apiKey: "k", model: "m", baseUrl: fake.base, fetch: capture });
+    await judgeVideo(input, { ...deps, provider });
+    const schema = (JSON.parse(sent[0]!) as { generationConfig: { responseJsonSchema: { properties: object; required: string[] } } }).generationConfig.responseJsonSchema;
+    expect(Object.keys(schema.properties)[0]).toBe("transcript");
+    expect(schema.required).toContain("transcript");
+  });
+
+  it("should_repair_once_then_keep_valid_scores_when_the_transcript_is_still_missing", async () => {
+    const { fake, deps, input, steps } = await setup({ scenario: "transcript-missing" });
+    const logs: [string, Record<string, unknown>][] = [];
+    const r = await judgeVideo(input, { ...deps, log: (e, d) => void logs.push([e, d]) });
+    expect(generateCalls(fake)).toBe(2);
+    expect(steps).toContainEqual(["Scoring", "Checking scorecard format · retrying once"]);
+    expect(r.provenance.repairUsed).toBe(true);
+    expect(r.transcript).toBeNull();
+    expect(r.overallScore).toBe(3.92);
+    expect(JudgeResultSchema.safeParse(r).success).toBe(true);
+    expect(logs.find(([e]) => e === "agent.extras_missing")?.[1]).toMatchObject({ fields: ["transcript"] });
+  });
+
+  it("should_report_where_a_transcript_ends_early", async () => {
+    const { deps, input } = await setup({ scenario: "transcript-early", durationSeconds: 165 });
+    const r = await judgeVideo(input, deps);
+    expect(r.transcript!.at(-1)!.to).toBe("01:22");
+    expect(transcriptEarlyEnd(r.transcript, r.durationSeconds)).toBe(82);
+  });
+
+  it("should_mark_a_video_without_speech_and_never_flag_it_as_ending_early", async () => {
+    const { deps, input } = await setup({ scenario: "no-speech" });
+    const r = await judgeVideo(input, deps);
+    expect(r.transcript).toEqual([{ from: "00:00", to: "02:00", speech: false, text: "" }]);
+    expect(r.flags!.audio).toBe("missing");
+    expect(transcriptEarlyEnd(r.transcript, r.durationSeconds)).toBeUndefined();
+  });
+});
+
+describe("judgeVideo summary (JDG-09)", () => {
+  it("should_return_the_summary_from_the_same_request_as_the_scores", async () => {
+    const { fake, deps, input } = await setup();
+    const r = await judgeVideo(input, deps);
+    expect(r.summary).toMatch(/^Fixture output for automated tests, not a description of the uploaded video\./);
+    expect(fake.requests.filter((q) => q.path.endsWith(":generateContent"))).toHaveLength(1);
+  });
+
+  it("should_repair_once_then_keep_scores_and_transcript_when_the_summary_is_still_missing", async () => {
+    const { deps, input } = await setup({ scenario: "summary-missing" });
+    const r = await judgeVideo(input, deps);
+    expect(r.provenance.repairUsed).toBe(true);
+    expect(r.summary).toBeNull();
+    expect(r.transcript).toHaveLength(5);
+    expect(r.overallScore).toBe(3.92);
   });
 });
 

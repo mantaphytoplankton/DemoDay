@@ -353,7 +353,9 @@ contents: [ <original user turn>,
             { role: "user",  parts: [{ text: "Your response did not match the schema: <Zod issues, max 20>. Return the complete corrected JSON object only." }] } ]
 ```
 
-If the second response is also invalid: `INVALID_MODEL_OUTPUT` (retryable by the judge). No partial scorecard is saved (JDG-04). The repair re-sends the video reference, so it costs about the same input tokens again. Repair frequency is tracked in logs and the golden-set report.
+If the second response is also invalid: `INVALID_MODEL_OUTPUT` (retryable by the judge). No partial scorecard is saved (JDG-04).
+
+Exception for the supporting fields of v3 (`transcript`, `summary`; S-5, ADR-013): they are validated on their own. When the scorecard itself (observations, categories, comments, flags) is valid in either answer but a supporting field is still missing or invalid after the repair, the scorecard is saved and that field is stored as `null` ("not available for this result"). The answer missing the fewest supporting fields is used, preferring the repaired one. A supporting field never discards valid scores; an invalid scorecard still fails as above. Logged as `agent.extras_missing`. The repair re-sends the video reference, so it costs about the same input tokens again. Repair frequency is tracked in logs and the golden-set report.
 
 ### 6.5 Post-processing (`postprocess.ts`)
 
@@ -370,6 +372,8 @@ Pure functions with full unit coverage:
 3. **Timestamps (v2)**: observations whose `at` is later than `duration + 1s` are dropped and counted in `provenance.droppedObservations`. Remarks are kept as written.
 4. **Flags (v2)**: the model flags are combined with the computed duration flag. The duration flag always comes from code.
 5. **Text limits**: remarks are trimmed to 1500 characters and overall comments to 2000, at a sentence boundary.
+6. **Transcript (v3, JDG-08)**: segments are sorted by start; a segment starting after the end of the video is dropped; `to` is capped at the video length and is never before `from`; a `speech: true` segment with empty text becomes `speech: false`; timestamps are normalised to `mm:ss`. Coverage (start, end, has speech, ends early) is computed in `shared/transcript.ts`, not stored: a transcript with speech that ends more than 15 s before the video's rounded length "ends early", which adds the flag "Transcript ends early (mm:ss of mm:ss)".
+7. **Summary (v3, JDG-09)**: at least 40 words and no score or rating talk (`4/5`, `3 out of 5`, `scored`, `rating`) are required by validation; above 120 words it is trimmed at the last sentence end that fits.
 
 ## 7. Output schema
 
@@ -377,7 +381,24 @@ Pure functions with full unit coverage:
 
 Categories are an **object keyed by category ID** rather than an array. JSON Schema `required` then forces exactly one entry per rubric category, which an array cannot express.
 
-Inside each category, `remarks` comes before `score`, and in v2 `observations` comes before `categories`. Gemini generates properties in schema order, so the model writes its evidence and reasoning before committing to a number.
+Inside each category, `remarks` comes before `score`, and `observations` comes before `categories`. Gemini generates properties in schema order, so the model writes its evidence and reasoning before committing to a number. In v3 the `transcript` comes first and the neutral `summary` second, so the model goes through the whole video and describes it before judging it.
+
+Output version 3 (S-5, current) adds two supporting fields in front of the v2 fields:
+
+```ts
+const transcript = z.array(z.object({
+  from: mmss, to: mmss,                 // mm:ss on the video timeline
+  speech: z.boolean(),                  // false = a stretch without speech (silence, music, unnarrated demo)
+  text: z.string().max(1500),           // word for word, in the language spoken; "" when speech is false
+}).strict()).min(1).max(150);
+const summary = z.string().max(2000)    // 40-120 words, neutral: problem and user, what the demo shows, value claimed
+  .refine(atLeast40Words).refine(noScoreOrRatingTalk);
+
+buildModelOutputSchema(meta) = z.object({ transcript, summary, ...v2 }).strict();
+buildCoreOutputSchema(meta)  = z.object(v2).strict();   // what must be valid for a result to be saved (6.4)
+```
+
+Versions 1 and 2, kept for reference:
 
 ```ts
 // output-schema.ts — built per evaluation from the loaded rubric
@@ -413,13 +434,17 @@ function buildModelOutputSchema(meta: RubricMeta, version: 1 | 2) {
 
 ### 7.2 JSON Schema for the request
 
-`z.toJSONSchema(schema, { target: "draft-2020-12", io: "input" })` (Zod 4). Unsupported keywords are stripped by a whitelist pass before sending (`minLength` and `maxLength` on strings and the regex `pattern` are kept only if the model accepts them; Zod still enforces them on the response).
+`z.toJSONSchema(schema, { target: "draft-2020-12", io: "input" })` (Zod 4). Unsupported keywords are stripped by a whitelist pass before sending (`minLength` and `maxLength` on strings and the regex `pattern` are kept only if the model accepts them; Zod still enforces them on the response). Refinements (summary word count, no score talk) are not expressible and are enforced only on the response.
+
+`buildRequestSchema(meta)` also removes `maxItems` from the transcript array. Vertex AI rejects the whole request with `400 INVALID_ARGUMENT` ("Request contains an invalid argument", no detail) when that array carries `maxItems` of 100 or more, and even 40 next to the other constraints; constrained decoding has a complexity limit. Measured with text-only probes on 2026-10-09 ([knowledge note](../knowledge/gemini/structured-output-limits.md)). The 150-segment limit is enforced on the response.
 
 ### 7.3 Agent result
 
 ```ts
 interface JudgeResult {
-  outputVersion: 1 | 2;
+  outputVersion: 1 | 2 | 3;
+  transcript?: { from: string; to: string; speech: boolean; text: string }[] | null;  // v3; null = not available
+  summary?: string | null;                      // v3; null = not available
   categories: Record<string, { score: 1|2|3|4|5; remarks: string }>;
   overallComments: string;
   overallScore: number;                         // computed, 2 decimals
@@ -629,6 +654,7 @@ Retries, schema, repair turn and post-processing are shared (section 9 applies t
 
 - **Built**: sections 3 to 9 (output version 1 only), section 12, section 14 (`npm run judge`), and the unit and integration tests in section 15.
 - **Built in S-4 (2026-10-07)**: output version 2 (observations and flags) is always used, so `AGENT_OUTPUT_VERSION` is not needed. Version-1 results stay readable and show "No evidence details". Verified live through Vertex: valid on the first attempt for a slideware video (7 claimed observations; no working demo, audio missing, impact claimed).
+- **Built in S-5 (2026-10-09)**: output version 3 (transcript and summary, JDG-08/09) in the same request; supporting fields validated separately (6.4, ADR-013). Verified live through Vertex: a 2:52 narrated pitch gave 14 segments (495 words) covering 00:00–02:52 and a 41-word summary on the first attempt (1,892 output tokens, about 1,000 more than v2); a 1:44 video without narration gave one no-speech segment covering the whole video.
 - **Not yet built**:
   - The golden set (section 13), which needs reference videos.
   - The opt-in live test (`test:live:agent`).

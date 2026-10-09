@@ -1,8 +1,18 @@
 import { z } from "zod";
 
-/** Agent output as stored and shown (agent-design.md section 7.3, output version 1). */
+/** Agent output as stored and shown (agent-design.md section 7.3). */
 export const JudgeResultSchema = z.object({
-  outputVersion: z.union([z.literal(1), z.literal(2)]),
+  outputVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  /**
+   * Version 3 (S-5, JDG-08): the whole video in time order. Absent on earlier results ("judged before this
+   * feature"); null when the model returned no valid transcript ("not available for this result").
+   */
+  transcript: z
+    .array(z.object({ from: z.string(), to: z.string(), speech: z.boolean(), text: z.string() }))
+    .nullable()
+    .optional(),
+  /** Version 3 (S-5, JDG-09): neutral summary of what the video presents. Absent / null as for the transcript. */
+  summary: z.string().nullable().optional(),
   categories: z.record(z.string(), z.object({ score: z.number().int().min(1).max(5), remarks: z.string() })),
   overallComments: z.string(),
   overallScore: z.number().min(1).max(5),

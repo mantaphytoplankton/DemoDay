@@ -491,7 +491,7 @@ Not part of S-2. It needs its own story.
 Category columns are generated from the rubric categories recorded on the batch's results, in rubric order.
 
 ```
-Team, Status, Status reason,
+Team, Status, Status reason, Video summary,              (Video summary since S-5, JDG-09)
 <Category> AI score, <Category> final score, <Category> remarks,   (repeated per category)
 Overall AI score, Overall final score, Overall comments,
 Flags, Warnings, Overridden, Rubric version, Model, Evaluated at
@@ -618,8 +618,11 @@ Extends `common-test-strategy`. Coverage targets: 100% of critical paths (status
 | RSM-03 | Skip rule in `batch-job.ts`, rescan merge, rubric-version marker |
 | RSM-04 | Retry routes |
 | RSM-06 | `drive/errors.ts`, retry helper |
+| RSM-07 | Delete routes, `ConfirmDelete`, `BatchActions` |
+| JDG-08 | Agent (transcript, see agent-design.md 6.5, 7.1), `shared/transcript.ts` (coverage, early end), `scorecard/Transcript.tsx`, flag in `shared/flags.ts` |
+| JDG-09 | Agent (summary), "Video summary" section in `Scorecard`, `TeamSummary.videoSummary`, CSV column |
 
-## 15. Implementation notes (S-1 2026-10-05, S-2 2026-10-06, S-3 and S-4 2026-10-07)
+## 15. Implementation notes (S-1 2026-10-05, S-2 2026-10-06, S-3 and S-4 2026-10-07, S-5 2026-10-09)
 
 Where the S-1 build differs from the sections above:
 
@@ -647,6 +650,8 @@ Where the S-1 build differs from the sections above:
 | Delete (S-4) | `DELETE /api/evaluations/:id` with 409 `JOB_ACTIVE` | As designed, plus `DELETE /api/batches/:id`; remote copies are deleted best effort; Drive is never touched | RSM-07 |
 | Flag wording (S-4) | "Over 3:00" chips (ui-guideline 6.7) | "Exceeds 3-minute maximum (3:24)" and the JDG-06 texts | Aligns the UI with the SNG-03/JDG-06 acceptance criteria |
 | E2E server (S-4) | --- | `NEXT_DIST_DIR=.next-e2e`, so E2E runs beside a developer's `next dev` (Next 16 allows one dev server per build folder) | Tests no longer need to stop the developer's server |
+| Transcript and summary (S-5) | --- | Stored in the result (output version 3) and shown in `Scorecard`, so single results and the batch review panel both show them. The batch row keeps only `transcriptEarlyEnd` (for the flags column) and `videoSummary` (for the CSV); the transcript stays in the team detail file. Transcript timestamps seek the video on the result page; in the batch panel (Drive preview, not seekable) they are plain text, as observations are | JDG-08, JDG-09 |
+| Delete then judge again (S-5 fix) | --- | Deleting a batch also removes its cached `["batch", id]` and `["team", id]` queries. The same folder gets the same batch id, so the page otherwise showed the deleted batch's results and, seeing it Completed, never opened live updates | Found by the S-5 E2E run; the RSM-07 E2E test now checks the new run starts at 0 completed |
 | Reopening a batch | Keeps all rows | Also queues rows that failed with `AI_UNAVAILABLE`, `DRIVE_UNAVAILABLE` or `PROCESSING_TOO_LONG` (`TEMPORARY_FAILURES`) | Retry path until RSM-04 adds per-team Retry |
 
 ## 16. Open items

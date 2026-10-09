@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { t } from "@/i18n/t";
 import { useRouter } from "next/navigation";
 import { ConfirmDelete, deleteRequest } from "@/components/ui/ConfirmDelete";
@@ -9,6 +10,7 @@ import type { PublicBatch } from "@/shared/schemas/batch";
 /** RSM-02/03 + TBL-04: batch-level controls. `onChanged` reconnects live updates after a state change. */
 export function BatchActions({ batch, onChanged }: { batch: PublicBatch; onChanged: (patch?: Partial<PublicBatch>) => void }) {
   const router = useRouter();
+  const qc = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const pending = batch.teams.some((t) => t.status === "Pending");
@@ -46,7 +48,12 @@ export function BatchActions({ batch, onChanged }: { batch: PublicBatch; onChang
             body={t("delete.bodyBatch", { count: batch.teams.length })}
             onConfirm={async () => {
               const err = await deleteRequest(`/api/batches/${batch.id}`);
-              if (!err) router.push("/batches");
+              if (!err) {
+                // The same folder gets the same batch id when judged again: drop the cached copy so the new run is shown live.
+                qc.removeQueries({ queryKey: ["batch", batch.id] });
+                qc.removeQueries({ queryKey: ["team", batch.id] });
+                router.push("/batches");
+              }
               return err;
             }}
           />

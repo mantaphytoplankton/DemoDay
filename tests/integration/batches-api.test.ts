@@ -144,6 +144,33 @@ describe("reopening retries temporary failures (BAT-01)", () => {
   });
 });
 
+describe("transcript in a batch (JDG-08)", () => {
+  it("should_store_the_transcript_in_the_team_detail_and_flag_an_early_end_in_the_row", async () => {
+    const drive = getSharedFakeDrive();
+    drive.nodes.set("teamFolderEarly001", { id: "teamFolderEarly001", name: "Team 7 Early", mimeType: "application/vnd.google-apps.folder", parent: "fixtureHackathonRoot01" });
+    drive.nodes.set("videoEarly0000001", { id: "videoEarly0000001", name: "early.webm", mimeType: "video/webm", parent: "teamFolderEarly001", modifiedTime: "2026-10-02T10:00:00Z", content: fixtureVideo("DD-SCENARIO:transcript-early DD-DURATION:165") });
+    const { batchId } = (await (await start(ROOT)).json()) as { batchId: string };
+    await getApp().batchLane.idle();
+    const b = await getBatch(batchId);
+    const early = b.teams.find((t: any) => t.subfolderId === "teamFolderEarly001");
+    expect(early).toMatchObject({ status: "Completed", summary: { transcriptEarlyEnd: 82 } });
+    expect(b.teams.find((t: any) => t.subfolderId === "teamFolderAlpha001").summary.transcriptEarlyEnd).toBeUndefined();
+
+    const detail = (await (await TEAM(new Request("http://x"), params({ id: batchId, teamId: "teamFolderAlpha001" }))).json()) as any;
+    expect(detail.result.transcript).toHaveLength(5);
+    expect(detail.result.transcript[0].text).toBe("Fixture output: spoken words, part 1.");
+  });
+
+  it("should_keep_the_video_summary_in_the_team_row_for_the_export (JDG-09)", async () => {
+    const { batchId } = (await (await start(ROOT)).json()) as { batchId: string };
+    await getApp().batchLane.idle();
+    const b = await getBatch(batchId);
+    const alpha = b.teams.find((t: any) => t.subfolderId === "teamFolderAlpha001");
+    expect(alpha.summary.videoSummary).toMatch(/^Fixture output for automated tests/);
+    expect(b.teams.find((t: any) => t.teamName === "Team 2 Beta").summary).toBeUndefined();
+  });
+});
+
 describe("recovery", () => {
   it("should_mark_a_running_batch_interrupted_and_reset_in_flight_rows", async () => {
     const { batchId } = (await (await start(ROOT)).json()) as { batchId: string };
